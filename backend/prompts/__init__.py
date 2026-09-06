@@ -1,5 +1,5 @@
-"""DeepSeek 提示词模块（占位）。
+"""DeepSeek 提示词。提取与推荐语分开存放，便于观察和调整。"""
 
-信息提取与推荐语整理两套提示词会在实现 /extract 与 /finalize
-的轮次中分别加入此目录，本轮不包含内容。
-"""
+from .loader import load_extract_prompt
+
+__all__ = ["load_extract_prompt"]

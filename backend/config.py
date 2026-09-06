@@ -30,6 +30,19 @@ class Settings(BaseSettings):
     audio_ttl_hours: int = 24
     upload_timeout_s: float = 5.0
 
+    bailian_api_key: str = ""
+    asr_base_url: str = (
+        "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+    )
+    asr_model: str = "qwen3-asr-flash"
+    asr_timeout_s: float = 20.0
+    max_asr_data_uri_bytes: int = 10 * 1024 * 1024
+
+    bailian_workspace_id: str = ""
+    deepseek_base_url: str = ""
+    deepseek_model: str = "deepseek-v4-flash"
+    extract_timeout_s: float = 12.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
