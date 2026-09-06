@@ -4,3 +4,84 @@ body {
   background-color: #f5f5f7;
   color: #1d1d1f;
 }
+
+.page {
+  padding: 2rem;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.city-field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  font-size: 1rem;
+}
+
+.city-field input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d2d2d7;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.recorder {
+  margin-top: 1.5rem;
+}
+
+.record-button {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  border: 0;
+  border-radius: 16px;
+  background: #0071e3;
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.record-button:disabled {
+  background: #b0b0b5;
+  cursor: not-allowed;
+}
+
+.record-button-active {
+  background: #c41e3a;
+}
+
+.recorder-hint,
+.recorder-meta,
+.health-line {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.recorder-error {
+  color: #c41e3a;
+  line-height: 1.5;
+}
+
+.recorder-result {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.recorder-result audio {
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.download-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  color: #0071e3;
+}

@@ -1,15 +1,11 @@
-"""统一读取应用配置。
-
-本轮（项目骨架）只声明 /health 与跨域相关的最小配置项。
-BAILIAN_API_KEY / DEEPSEEK_API_KEY / AMAP_API_KEY 等密钥已经写入
-backend/.env.example 作为占位模板，但尚未在此声明为 Settings 字段，
-会在实现对应接口（/asr、/extract、/search、/finalize）的轮次中补充，
-避免本轮引入还用不到的配置字段。
-"""
+"""统一读取应用配置。"""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent
 
 
 class Settings(BaseSettings):
@@ -18,25 +14,29 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",  # 忽略 .env 中尚未声明为字段的其它占位变量
+        extra="ignore",
     )
 
-    # 服务监听配置
     app_host: str = "0.0.0.0"
     app_port: int = 8003
-
-    # 允许跨域访问的前端地址，多个用英文逗号分隔
     cors_origins: str = "http://localhost:5175"
+
+    storage_dir: str = str(BACKEND_DIR / "storage")
+    ffprobe_path: str = "ffprobe"
+
+    max_audio_bytes: int = 5 * 1024 * 1024
+    min_audio_duration_s: float = 1.0
+    max_audio_duration_s: float = 60.0
+    audio_ttl_hours: int = 24
+    upload_timeout_s: float = 5.0
 
     @property
     def cors_origin_list(self) -> list[str]:
-        """将 cors_origins 拆分为列表，供 CORSMiddleware 使用。"""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """缓存 Settings 实例，避免重复读取 .env。"""
     return Settings()
 
 

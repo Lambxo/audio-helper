@@ -1,14 +1,11 @@
-"""FastAPI 服务入口。
+"""FastAPI 服务入口。"""
 
-本轮只挂载 /health。CORS 只放行 config.py 中配置的前端地址
-（默认 http://localhost:5175），不使用通配符。
-"""
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from api import api_router
 from config import settings
+from errors import new_request_id, register_exception_handlers
 
 app = FastAPI(title="语音约碰面地点 API", version="0.1.0")
 
@@ -20,6 +17,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def attach_request_id(request: Request, call_next):
+    request.state.request_id = new_request_id()
+    return await call_next(request)
+
+
+register_exception_handlers(app)
 app.include_router(api_router)
 
 
