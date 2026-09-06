@@ -207,6 +207,34 @@ def test_extract_timeout_returns_504(client, monkeypatch):
     assert response.json()["error"]["code"] == "DEEPSEEK_TIMEOUT"
 
 
+def test_deepseek_chat_url_defaults_to_beijing_compatible(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_BASE_URL", raising=False)
+    monkeypatch.delenv("BAILIAN_WORKSPACE_ID", raising=False)
+    get_settings.cache_clear()
+    try:
+        from services.extract import deepseek_chat_url
+
+        assert deepseek_chat_url() == (
+            "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        )
+    finally:
+        get_settings.cache_clear()
+
+
+def test_deepseek_chat_url_uses_workspace_id(monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_BASE_URL", raising=False)
+    monkeypatch.setenv("BAILIAN_WORKSPACE_ID", "llm-testspace")
+    get_settings.cache_clear()
+    try:
+        from services.extract import deepseek_chat_url
+
+        assert deepseek_chat_url() == (
+            "https://llm-testspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
+        )
+    finally:
+        get_settings.cache_clear()
+
+
 def test_extract_missing_body_returns_422(client):
     response = client.post("/extract", json={})
     assert response.status_code == 422

@@ -133,6 +133,11 @@ def evaluate_business(parsed: ModelExtractOutput, default_city: str) -> ExtractB
     )
 
 
+_BEIJING_COMPATIBLE_CHAT_URL = (
+    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+)
+
+
 def deepseek_chat_url() -> str:
     settings = get_settings()
     configured = settings.deepseek_base_url.strip()
@@ -142,14 +147,11 @@ def deepseek_chat_url() -> str:
             return url
         return f"{url}/chat/completions"
     workspace = settings.bailian_workspace_id.strip()
-    if not workspace:
-        raise ExtractError(
-            "EXTRACT_MODEL_BAD_OUTPUT",
-            "信息提取服务未配置调用地址，请填写 BAILIAN_WORKSPACE_ID 或 DEEPSEEK_BASE_URL",
+    if workspace:
+        return (
+            f"https://{workspace}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
         )
-    return (
-        f"https://{workspace}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions"
-    )
+    return _BEIJING_COMPATIBLE_CHAT_URL
 
 
 def _message_content(payload: Any) -> str | None:
@@ -190,8 +192,9 @@ async def complete_extract(text: str, city: str) -> str:
     }
 
     started = time.perf_counter()
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
     try:
-        async with httpx.AsyncClient(timeout=settings.extract_timeout_s) as client:
+        async with httpx.AsyncClient(timeout=settings.extract_timeout_s, transport=transport) as client:
             response = await client.post(url, json=body, headers=headers)
     except httpx.TimeoutException as exc:
         logger.info("extract timeout: stage=extract elapsed_ms=%s", int((time.perf_counter() - started) * 1000))

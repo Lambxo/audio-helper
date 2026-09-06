@@ -56,6 +56,72 @@ def test_transcribe_maps_timeout(monkeypatch):
         get_settings.cache_clear()
 
 
+def test_transcribe_maps_connect_error(monkeypatch):
+    monkeypatch.setenv("BAILIAN_API_KEY", "sk-test")
+    get_settings.cache_clear()
+
+    mock_client = AsyncMock()
+    mock_client.post.side_effect = httpx.ConnectError("ssl eof")
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = False
+
+    try:
+        with patch("services.bailian_asr.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(AsrError) as exc:
+                asyncio.run(transcribe(b"abc", "audio/webm"))
+        assert exc.value.code == "ASR_BAD_RESPONSE"
+        assert "无法连接" in exc.value.message
+    finally:
+        get_settings.cache_clear()
+
+
+def test_transcribe_maps_http_401(monkeypatch):
+    monkeypatch.setenv("BAILIAN_API_KEY", "sk-test")
+    get_settings.cache_clear()
+
+    response = Mock()
+    response.status_code = 401
+    response.json.return_value = {"code": "InvalidApiKey", "message": "Invalid API-key provided."}
+
+    mock_client = AsyncMock()
+    mock_client.post.return_value = response
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = False
+
+    try:
+        with patch("services.bailian_asr.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(AsrError) as exc:
+                asyncio.run(transcribe(b"abc", "audio/webm"))
+        assert exc.value.code == "ASR_BAD_RESPONSE"
+        assert "鉴权失败" in exc.value.message
+        assert "InvalidApiKey" in exc.value.message
+    finally:
+        get_settings.cache_clear()
+
+
+def test_transcribe_maps_vendor_code_on_http_200(monkeypatch):
+    monkeypatch.setenv("BAILIAN_API_KEY", "sk-test")
+    get_settings.cache_clear()
+
+    response = Mock()
+    response.status_code = 200
+    response.json.return_value = {"code": "InvalidApiKey", "message": "Invalid API-key provided."}
+
+    mock_client = AsyncMock()
+    mock_client.post.return_value = response
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = False
+
+    try:
+        with patch("services.bailian_asr.httpx.AsyncClient", return_value=mock_client):
+            with pytest.raises(AsrError) as exc:
+                asyncio.run(transcribe(b"abc", "audio/webm"))
+        assert exc.value.code == "ASR_BAD_RESPONSE"
+        assert "鉴权失败" in exc.value.message
+    finally:
+        get_settings.cache_clear()
+
+
 def test_transcribe_maps_empty_text(monkeypatch):
     monkeypatch.setenv("BAILIAN_API_KEY", "sk-test")
     get_settings.cache_clear()

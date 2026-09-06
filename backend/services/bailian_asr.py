@@ -52,6 +52,39 @@ def _extract_text(payload: object) -> str | None:
     return None
 
 
+def _vendor_error_hint(payload: object) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    error_obj = payload.get("error")
+    if isinstance(error_obj, dict):
+        code = error_obj.get("code") or error_obj.get("type")
+        message = error_obj.get("message")
+    else:
+        code = payload.get("code")
+        message = payload.get("message")
+    parts = [str(item) for item in (code, message) if item]
+    if not parts:
+        return ""
+    return "；供应商：" + " ".join(parts)[:160]
+
+
+def _raise_for_vendor_status(response: httpx.Response) -> None:
+    try:
+        payload: object = response.json()
+    except ValueError:
+        payload = None
+    hint = _vendor_error_hint(payload)
+    if response.status_code in (401, 403):
+        raise AsrError(
+            "ASR_BAD_RESPONSE",
+            "语音识别鉴权失败，请确认 BAILIAN_API_KEY 是百炼控制台北京地域的 API Key" + hint,
+        )
+    if response.status_code == 429:
+        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务繁忙，请稍后重试" + hint)
+    if response.status_code >= 400:
+        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试" + hint)
+
+
 async def transcribe(audio_bytes: bytes, mime_type: str) -> str:
     settings = get_settings()
     if not settings.bailian_api_key:
@@ -80,36 +113,44 @@ async def transcribe(audio_bytes: bytes, mime_type: str) -> str:
     }
 
     started = time.perf_counter()
+    # Windows 上默认优先 IPv6 时，连 dashscope.aliyuncs.com 会 SSL EOF；绑定 IPv4 可避开。
+    transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
     try:
-        async with httpx.AsyncClient(timeout=settings.asr_timeout_s) as client:
+        async with httpx.AsyncClient(timeout=settings.asr_timeout_s, transport=transport) as client:
             response = await client.post(settings.asr_base_url, json=body, headers=headers)
     except httpx.TimeoutException as exc:
-        logger.info("asr timeout: stage=asr elapsed_ms=%s", int((time.perf_counter() - started) * 1000))
+        logger.warning("asr timeout: stage=asr elapsed_ms=%s", int((time.perf_counter() - started) * 1000))
         raise AsrError("ASR_TIMEOUT", "语音识别超时，请稍后重试") from exc
     except httpx.HTTPError as exc:
-        logger.info("asr http error: stage=asr")
-        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试") from exc
+        logger.warning("asr http error: stage=asr error_type=%s", type(exc).__name__)
+        raise AsrError("ASR_BAD_RESPONSE", "无法连接语音识别服务，请检查网络后重试") from exc
 
     elapsed_ms = int((time.perf_counter() - started) * 1000)
-    logger.info("asr vendor response: stage=asr http_status=%s elapsed_ms=%s", response.status_code, elapsed_ms)
+    logger.warning("asr vendor response: stage=asr http_status=%s elapsed_ms=%s", response.status_code, elapsed_ms)
 
-    if response.status_code >= 500:
-        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试")
-    if response.status_code == 429:
-        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务繁忙，请稍后重试")
     if response.status_code >= 400:
-        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试")
+        _raise_for_vendor_status(response)
 
     try:
         payload = response.json()
     except ValueError as exc:
         raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试") from exc
 
+    vendor_code = payload.get("code") if isinstance(payload, dict) else None
+    if vendor_code:
+        hint = _vendor_error_hint(payload)
+        if str(vendor_code) in {"InvalidApiKey", "Arrearage", "AccessDenied", "Forbidden"}:
+            raise AsrError(
+                "ASR_BAD_RESPONSE",
+                "语音识别鉴权失败，请确认 BAILIAN_API_KEY 是百炼控制台北京地域的 API Key" + hint,
+            )
+        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试" + hint)
+
     text = _extract_text(payload)
     if text is None:
-        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试")
+        raise AsrError("ASR_BAD_RESPONSE", "语音识别服务异常，请稍后重试" + _vendor_error_hint(payload))
     stripped = text.strip()
     if not stripped:
         raise AsrError("ASR_EMPTY_RESULT", "没有识别到有效语音，请重新说一遍")
-    logger.info("asr ok: stage=asr text_chars=%s elapsed_ms=%s", len(stripped), elapsed_ms)
+    logger.warning("asr ok: stage=asr text_chars=%s elapsed_ms=%s", len(stripped), elapsed_ms)
     return stripped
