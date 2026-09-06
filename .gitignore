@@ -1,0 +1,26 @@
+# ---------- Python / 后端 ----------
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+backend/.venv/
+backend/venv/
+backend/.pytest_cache/
+
+# 环境变量与密钥（仓库只保留 .env.example）
+backend/.env
+
+# 临时音频与查询结果：保留目录结构，不提交内容
+backend/storage/**
+!backend/storage/audio/
+!backend/storage/audio/.gitkeep
+!backend/storage/search/
+!backend/storage/search/.gitkeep
+
+# ---------- Node / 前端 ----------
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ---------- 编辑器 / 系统 ----------
+.DS_Store
+Thumbs.db

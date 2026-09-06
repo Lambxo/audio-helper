@@ -1,0 +1,13 @@
+# 本轮（项目骨架 + /health）实际用到的依赖。
+# ASR/DeepSeek/高德调用相关依赖（如 httpx 的具体用法）会在对应轮次继续沿用/补充，
+# 文件上传解析（python-multipart）等会在实现 /upload 时再加入。
+
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32,<1.0
+pydantic>=2.9,<3.0
+pydantic-settings>=2.6,<3.0
+python-dotenv>=1.0,<2.0
+httpx>=0.27,<1.0
+
+# 测试
+pytest>=8.3,<9.0
